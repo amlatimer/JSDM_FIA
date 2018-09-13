@@ -44,18 +44,11 @@ d_fire = merge(d, d_fireinfo[,c("FIA_CN2", "YrLastFire")], by.x="CN", by.y="FIA_
 names(d_fire)
 plotlocs= SpatialPoints(d_fire[,c("LON", "LAT")])
 
-
-# Need a gridded layer for the region for displaying model fits and predictions
-# Use PRISM for base historical climate. Then add anomaly from either downscaled GCM change (1/8 degree res).
-# Model: if not time to do ensemble, use GFDL cm3 model, RCP 4.5 or 6 for 2040-2069?
-# GFDL data: http://nomads.gfdl.noaa.gov:8080/DataPortal/cmip5.jsp
-
 # Load prism raster layers
 load("../working-files/sierra_prism_rasters.Rdata")
 load("../working-files/sierra_change_rasters.Rdata")
 
-
-# Alternatively, load prism historical normals as raster first
+# Alternatively, load prism historical normals as raster first and then crop
 #pptnorm = raster("./climatedata/PRISM_ppt_30yr_normal_4kmM2_annual_asc/PRISM_ppt_30yr_normal_4kmM2_annual_asc.asc")
 #tmeannorm = raster("./ClimateData/PRISM_tmean_30yr_normal_4kmM2_annual_asc/PRISM_tmean_30yr_normal_4kmM2_annual_asc.asc")
 # Select part of raster that matches area covered by Sierra FIA plots
@@ -108,7 +101,6 @@ d_fire$tmeannew = extract(tmeannorm.sierra, plotlocs)
 plot(tmeannew~tmean.mean, d_fire)
 abline(c(0,1))
 # Values for plots are close to, but not exactly same as in Derek's data set, because of fuzzing. So: use Derek's data for fitting (extracted from the actual locations), but map projections to the PRISM grid. 
-
 
 # Make pictures of the climate layers (historical normals)
 #png(filename=paste(plotpath, "pptnorm_PRISM.png", sep=""))
