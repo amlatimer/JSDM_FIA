@@ -1,9 +1,7 @@
 # Look at and organize Sierra forest FIA data 
 
 
-setwd("~/Google Drive/samsi/fia")
-
-plotpath = "/users/latimer/documents/currentplots/" # place to put plots for easy access from Powerpoint
+plotpath = "../plots/" # place to put plots for easy access from Powerpoint
 
 library(sp)
 library(maps)
@@ -22,9 +20,9 @@ source("latimer_gjam_functions.R")
 #############################
 
 #d = read.csv("FIA_WB_model_full_data_forAML.csv")
-d_fireinfo = read.csv("./Derek/FinalSierraCWB_FIA_withCN_RadHours_fuzzedCoords.csv")
-d_site = read.csv("./Derek/FIA_non-WB_predictors.csv")
-d_ba = read.csv("./Derek/FIA_SPxBA.csv")
+d_fireinfo = read.csv("../data/FinalSierraCWB_FIA_withCN_RadHours_fuzzedCoords.csv")
+d_site = read.csv("../data/FIA_non-WB_predictors.csv")
+d_ba = read.csv("../data/FIA_SPxBA.csv")
 
 # compare coverage of the data sets
 plot(d_fireinfo[,c("long", "lat")])
@@ -46,16 +44,6 @@ d_fire = merge(d, d_fireinfo[,c("FIA_CN2", "YrLastFire")], by.x="CN", by.y="FIA_
 names(d_fire)
 plotlocs= SpatialPoints(d_fire[,c("LON", "LAT")])
 
-#png(filename=paste(plotpath, "fire_locations.png", sep=""))
-map("county", "CA")
-#points(plotlocs, pch=16, cex=0.5, col="lightgray")
-points(plotlocs[d_fire$YrLastFire<1987], pch=16, cex=0.5, col="lightblue")
-points(plotlocs[d_fire$YrLastFire>0 & d_fire$YrLastFire<1987], pch=16, cex=0.5, col="yellow2")
-points(plotlocs[d_fire$YrLastFire>=1987 & d_fire$YrLastFire<2007], pch=16, cex=0.5, col="orange3")
-points(plotlocs[d_fire$YrLastFire>=2007], pch=16, cex=0.5, col="red")
-legend("topright", c("no fire", "fire pre-1987", "fire 1987-2006", "fire 2007-present"), pch=rep(16, 4), col=c("lightblue", "yellow2", "orange3", "red"))
-#dev.off()
-
 
 # Need a gridded layer for the region for displaying model fits and predictions
 # Use PRISM for base historical climate. Then add anomaly from either downscaled GCM change (1/8 degree res).
@@ -63,57 +51,55 @@ legend("topright", c("no fire", "fire pre-1987", "fire 1987-2006", "fire 2007-pr
 # GFDL data: http://nomads.gfdl.noaa.gov:8080/DataPortal/cmip5.jsp
 
 # Load prism raster layers
-load("sierra_prism_rasters.Rdata")
-load("sierra_change_rasters.Rdata")
+load("../working-files/sierra_prism_rasters.Rdata")
+load("../working-files/sierra_change_rasters.Rdata")
 
 
 # Alternatively, load prism historical normals as raster first
-pptnorm = raster("./climatedata/PRISM_ppt_30yr_normal_4kmM2_annual_asc/PRISM_ppt_30yr_normal_4kmM2_annual_asc.asc")
-tmeannorm = raster("./ClimateData/PRISM_tmean_30yr_normal_4kmM2_annual_asc/PRISM_tmean_30yr_normal_4kmM2_annual_asc.asc")
+#pptnorm = raster("./climatedata/PRISM_ppt_30yr_normal_4kmM2_annual_asc/PRISM_ppt_30yr_normal_4kmM2_annual_asc.asc")
+#tmeannorm = raster("./ClimateData/PRISM_tmean_30yr_normal_4kmM2_annual_asc/PRISM_tmean_30yr_normal_4kmM2_annual_asc.asc")
 # Select part of raster that matches area covered by Sierra FIA plots
-
-
-bb = extent(c(-122, -117, 34.5, 41))
-pptnorm = crop(pptnorm, bb)
-tmeannorm = crop(tmeannorm, bb)
-plot(tmeannorm)
-plot(plotlocs, pch=16, add=T, cex=0.5)
+#bb = extent(c(-122, -117, 34.5, 41))
+#pptnorm = crop(pptnorm, bb)
+#tmeannorm = crop(tmeannorm, bb)
+#plot(tmeannorm)
+#plot(plotlocs, pch=16, add=T, cex=0.5)
 #snoutline = drawPoly()
 #save(snoutline, file= "sierras.outline.Rdata")
-load("sierras.outline.Rdata")
-plot(snoutline,add=T)
+#load("sierras.outline.Rdata")
+#plot(snoutline,add=T)
 # next get cell numbers for all cells in pptnorm inside the polygon, then set all other cell values (seValues) to NA
 # And use the index of cell numbers to assign values and display model outputs. 
 # can also then convert the raster to polygons using rasterToPolygons -- leaving behind the NA values. 
 
 # Make precip raster layer
-cells.inside = extract(pptnorm, snoutline, cellnumbers=TRUE)[[1]]
-head(cells.inside)
-pptnorm.sierra = pptnorm
-cellvals = rep(NA, length(pptnorm.sierra))
-cellvals[cells.inside[,1]] = cells.inside[,2]
-pptnorm.sierra = setValues(pptnorm.sierra, cellvals)
-plot(pptnorm.sierra, col=heat.colors(100))
+#cells.inside = extract(pptnorm, snoutline, cellnumbers=TRUE)[[1]]
+#head(cells.inside)
+#pptnorm.sierra = pptnorm
+#cellvals = rep(NA, length(pptnorm.sierra))
+#cellvals[cells.inside[,1]] = cells.inside[,2]
+#pptnorm.sierra = setValues(pptnorm.sierra, cellvals)
+#plot(pptnorm.sierra, col=heat.colors(100))
 
 # make temperature raster layer
-cells.inside = extract(tmeannorm, snoutline, cellnumbers=TRUE)[[1]]
-cell.index = cells.inside[,1]
-tmeannorm.sierra = tmeannorm
-cellvals = rep(NA, length(tmeannorm.sierra))
-cellvals[cells.inside[,1]] = cells.inside[,2]
-tmeannorm.sierra = setValues(tmeannorm.sierra, cellvals)
-plot(tmeannorm.sierra, col=heat.colors(100))
+#cells.inside = extract(tmeannorm, snoutline, cellnumbers=TRUE)[[1]]
+#cell.index = cells.inside[,1]
+#tmeannorm.sierra = tmeannorm
+#cellvals = rep(NA, length(tmeannorm.sierra))
+#cellvals[cells.inside[,1]] = cells.inside[,2]
+#tmeannorm.sierra = setValues(tmeannorm.sierra, cellvals)
+#plot(tmeannorm.sierra, col=heat.colors(100))
 
 # Write out the rasters and index of cells inside Sierra domain
 #save(tmeannorm.sierra, pptnorm.sierra, cell.index,  file="sierra_prism_rasters.Rdata")
 
+# Check the resulting rasters
 plot(pptnorm.sierra, xlim=c(-122, -117), ylim=c(35, 41), xlab="LON", ylab="LAT", cex.axis=1.2, cex.lab=1.2)
 plot(plotlocs, add=T)
 plotmap(plotlocs, d_fire$ppt.tot, rain.colors)
 d_fire$pptnew = extract(pptnorm.sierra, plotlocs)
 
 plot(pptnew~ppt.tot, d_fire)
-
 
 plot(tmeannorm.sierra, xlim=c(-122, -117), ylim=c(35, 41), xlab="LON", ylab="LAT", cex.axis=1.2, cex.lab=1.2)
 #plot(plotlocs, add=T)
@@ -132,7 +118,6 @@ abline(c(0,1))
 #plot(tmeannorm, xlim=c(-122, -117), ylim=c(35, 41), xlab="LON", ylab="LAT", cex.axis=1.2, cex.lab=1.2)
 #dev.off()
 
-
 # Create data set for projecting model results to sierra raster
 # Includes standardized precip, standardized temp, (standardized precip)^2, (standardized temp)^2, standarized precip x standardized temp
 x.rast = data.frame(intercept = rep(1, length(cell.index)), ppt=scale(pptnorm.sierra[cell.index]), ppt2 = scale(pptnorm.sierra[cell.index])^2, tmean = scale(tmeannorm.sierra[cell.index]), tmean2 = scale(tmeannorm.sierra[cell.index])^2, pptxtemp = scale(pptnorm.sierra[cell.index])*scale(tmeannorm.sierra[cell.index]))
@@ -148,7 +133,7 @@ rev(sort(prev))
 # Select the most abundant species
 spp = names(prev)[prev>=50] # take species that occur in at least 50 plots
 
-# If i'ts still in the data set, remove mountain mahogany (doesn't converge, and it's not really a tree)
+# If it's still in the data set, remove mountain mahogany (doesn't converge, and it's not really a tree)
 #spp = spp[spp != "sp.CELE3"]
 
 # Set up the species basal area as the response matrix
@@ -170,24 +155,11 @@ d = d[ynonzero,]
 d_fire = d_fire[ynonzero,]
 plotlocs = plotlocs[ynonzero]
 
-# For comparison, plot PCA of y
-#y_prcomp = prcomp(y[ynonzero,])
-#summary(y_prcomp)
-#biplot(y_prcomp)
-# And NMDS # note this runs for a few minutes
-#y_nmds = metaMDS(y[ynonzero,], distance="bray")
-#plot(y_nmds, type="t")
-#xy_nmds = envfit(y_nmds, d[ynonzero,c("ppt", "ppt2","tmean","tmean2","pptxtemp")])
-#plot(xy_nmds, choices=c(1,2), col="blue3")
-
-
 # From here on, let's call the data frame d_fire (including time of last fire) "d" for simplicity. 
 
 d <- d_fire
 
 # Add more variables to the analysis data frame 
-
-
 d$sin.slope = d$SlopeFIA/180*pi
 d$sin.slope.sin.aspect = sin(d$SlopeFIA/180*pi) * sin(d$AspectFIA/180*pi)
 d$sin.slope.cos.aspect = sin(d$SlopeFIA/180*pi) * cos(d$AspectFIA/180*pi)
