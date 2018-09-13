@@ -111,13 +111,11 @@ abline(c(0,1))
 #dev.off()
 
 # Create data set for projecting model results to sierra raster
-# Includes standardized precip, standardized temp, (standardized precip)^2, (standardized temp)^2, standarized precip x standardized temp
-x.rast = data.frame(intercept = rep(1, length(cell.index)), ppt=scale(pptnorm.sierra[cell.index]), ppt2 = scale(pptnorm.sierra[cell.index])^2, tmean = scale(tmeannorm.sierra[cell.index]), tmean2 = scale(tmeannorm.sierra[cell.index])^2, pptxtemp = scale(pptnorm.sierra[cell.index])*scale(tmeannorm.sierra[cell.index]))
+# Includes precip and temp
+x.rast = data.frame(ppt.tot=pptnorm.sierra[cell.index], tmean.mean = tmeannorm.sierra[cell.index])
 head(x.rast); dim(x.rast)
 
-
-# select a subset of common species to model
-
+# Select a subset of common species to model
 names(d_fire) 
 spdata = d[,239:268]
 prev = apply(spdata, 2, f<-function(x) {return(sum(x>0))})
