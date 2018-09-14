@@ -19,30 +19,28 @@ source("latimer_gjam_functions.R")
 # Read in the data
 #############################
 
-#d = read.csv("FIA_WB_model_full_data_forAML.csv")
-d_fireinfo = read.csv("../data/FinalSierraCWB_FIA_withCN_RadHours_fuzzedCoords.csv")
-d_site = read.csv("../data/FIA_non-WB_predictors.csv")
+# FIA stem data with fuzzed coordinates
 d_ba = read.csv("../data/FIA_SPxBA.csv")
+head(d_ba)
 
-# compare coverage of the data sets
-plot(d_fireinfo[,c("long", "lat")])
-nrow(d_fireinfo)
-points(d_fireinfo[d_fireinfo$FIA_CN2 %in% d_ba$CN,c("long", "lat")], col=2)
-nrow(d_ba)
+# FIA environmental data  based on "unfuzzed" coordinates of original plots. 
+d_site <- read.csv("../data/Quentin/cali_environmentaldata.csv")
+head(d_site)
 
-plot(d_site[,c("LON", "LAT")], col="blue")
-points(d_site[d_site$CN %in% d_ba$CN,c("LON", "LAT")], col=2)
+# Fuzzed coordinates of sites (from Derek's environmental data set)
+fuzzed_coords = read.csv("../data/FIA_non-WB_predictors.csv")[,c("CN", "Lon", "Lat")]
 
-
-# It looks like the best data set for modeling sierra forest in general (not including fire info other than what's in FIA) is the combination of FIA_nonWB_predictors with the ba data set: 1139 plots. 
 
 # Merge the info together
-d = merge(d_site, d_ba, by="CN") # combine basal area and site info
-plot(d[,c("LON", "LAT")])
-d_fire = merge(d, d_fireinfo[,c("FIA_CN2", "YrLastFire")], by.x="CN", by.y="FIA_CN2", all.x=TRUE, all.y=FALSE)
+d = merge(d_site, d_ba, by.x="PLT_CN", by.y="CN") # combine basal area and site info
+d = merge(d, fuzzed_coords, by.x="PLT_CN", by.y="CN")
+plot(d[,c("Lon", "Lat")])
+#d_fire = merge(d, d_fireinfo[,c("FIA_CN2", "YrLastFire")], by.x="CN", by.y="FIA_CN2", all.x=TRUE, all.y=FALSE)
+#d = read.csv("FIA_WB_model_full_data_forAML.csv")
+#d_fireinfo = read.csv("../data/FinalSierraCWB_FIA_withCN_RadHours_fuzzedCoords.csv")
+#d_site = read.csv("../data/FIA_non-WB_predictors.csv")
 
-names(d_fire)
-plotlocs= SpatialPoints(d_fire[,c("LON", "LAT")])
+plotlocs= SpatialPoints(d_fire[,c("Lon", "Lat")])
 
 # Load prism raster layers
 load("../working-files/sierra_prism_rasters.Rdata")
@@ -89,18 +87,8 @@ load("../working-files/sierra_change_rasters.Rdata")
 # Check the resulting rasters
 plot(pptnorm.sierra, xlim=c(-122, -117), ylim=c(35, 41), xlab="LON", ylab="LAT", cex.axis=1.2, cex.lab=1.2)
 plot(plotlocs, add=T)
-plotmap(plotlocs, d_fire$ppt.tot, rain.colors)
-d_fire$pptnew = extract(pptnorm.sierra, plotlocs)
-
-plot(pptnew~ppt.tot, d_fire)
-
 plot(tmeannorm.sierra, xlim=c(-122, -117), ylim=c(35, 41), xlab="LON", ylab="LAT", cex.axis=1.2, cex.lab=1.2)
-#plot(plotlocs, add=T)
-plotmap(plotlocs, d_fire$tmean.mean, rain.colors)
-d_fire$tmeannew = extract(tmeannorm.sierra, plotlocs)
-plot(tmeannew~tmean.mean, d_fire)
-abline(c(0,1))
-# Values for plots are close to, but not exactly same as in Derek's data set, because of fuzzing. So: use Derek's data for fitting (extracted from the actual locations), but map projections to the PRISM grid. 
+plot(plotlocs, add=T)
 
 # Make pictures of the climate layers (historical normals)
 #png(filename=paste(plotpath, "pptnorm_PRISM.png", sep=""))
@@ -116,15 +104,15 @@ x.rast = data.frame(ppt.tot=pptnorm.sierra[cell.index], tmean.mean = tmeannorm.s
 head(x.rast); dim(x.rast)
 
 # Select a subset of common species to model
-names(d_fire) 
-spdata = d[,239:268]
+names(d) 
+spdata = d[,110:139] # d[,239:268]
 prev = apply(spdata, 2, f<-function(x) {return(sum(x>0))})
 rev(sort(prev)) 
 # Select the most abundant species
-spp = names(prev)[prev>=50] # take species that occur in at least 50 plots
+spp = names(prev)[prev>=25] # take species that occur in some minimum number of plots
 
 # If it's still in the data set, remove mountain mahogany (doesn't converge, and it's not really a tree)
-#spp = spp[spp != "sp.CELE3"]
+spp = spp[spp != "sp.CELE3"]
 
 # Set up the species basal area as the response matrix
 y = spdata[,spp]
@@ -145,9 +133,6 @@ d = d[ynonzero,]
 d_fire = d_fire[ynonzero,]
 plotlocs = plotlocs[ynonzero]
 
-# From here on, let's call the data frame d_fire (including time of last fire) "d" for simplicity. 
-
-d <- d_fire
 
 # Add more variables to the analysis data frame 
 d$sin.slope = d$SlopeFIA/180*pi
