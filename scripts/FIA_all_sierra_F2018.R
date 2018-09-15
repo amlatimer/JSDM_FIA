@@ -156,7 +156,7 @@ ml = list(ng=2000, burnin=1000, typeNames="CA")#, reductList = list(r=4, N=8))
 # note including dimension reduction may be necessary to avoid overfitting; see plots of inverse-predicted temp vs observed temp below
 
 # Test run on all data 
-out <- gjam(~ pptnew + tmeannew + I(pptnew^2) + I(tmeannew^2) + pptnew:tmeannew + rad.tot + sin.slope.cos.aspect+ sin.slope.sin.aspect, xdata=d, ydata=y, modelList=ml)
+out <- gjam(~ bio12_1k_point + bio1_1k_point + I(bio12_1k_point^2) + I(bio1_1k_point^2) + bio12_1k_point:bio1_1k_point + aspect_sin_30m_point + aspect_cos_30m_point, xdata=d, ydata=y, modelList=ml)
 
 #~ ppt.tot + I(ppt.tot^2) + tmean.mean + I(tmean.mean^2) + ppt.tot:tmean.mean 
 
