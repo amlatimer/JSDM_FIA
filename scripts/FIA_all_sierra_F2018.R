@@ -20,27 +20,36 @@ source("latimer_gjam_functions.R")
 #############################
 
 # FIA stem data with fuzzed coordinates
-d_ba = read.csv("../data/FIA_SPxBA.csv")
-head(d_ba)
+d_ba = read.csv("../working-files/basal_area_cali_wide.csv")
+names(d_ba)[1] <- "PLT_CN"
+#d_ba_quentin = read.csv("../data/quentin/cali_basalarea.csv")
+#head(d_ba)
+dim(d_ba)
+#sum(d_ba_quentin$PLT_CN %in% d_ba$PLT_CN)
+
+# Plot locations 
+d_plotloc <- read.csv("../data/fia-raw-data/CA/CA_PLOT.csv")[,c("CN", "LON", "LAT", "ELEV")]
+
 
 # FIA environmental data  based on "unfuzzed" coordinates of original plots. 
 d_site <- read.csv("../data/Quentin/cali_environmentaldata.csv")
-head(d_site)
-
-# Fuzzed coordinates of sites (from Derek's environmental data set)
-fuzzed_coords = read.csv("../data/FIA_non-WB_predictors.csv")[,c("CN", "Lon", "Lat")]
+head(d_site); dim(d_site)
 
 
 # Merge the info together
-d = merge(d_site, d_ba, by.x="PLT_CN", by.y="CN") # combine basal area and site info
-d = merge(d, fuzzed_coords, by.x="PLT_CN", by.y="CN")
-plot(d[,c("Lon", "Lat")])
-#d_fire = merge(d, d_fireinfo[,c("FIA_CN2", "YrLastFire")], by.x="CN", by.y="FIA_CN2", all.x=TRUE, all.y=FALSE)
-#d = read.csv("FIA_WB_model_full_data_forAML.csv")
-#d_fireinfo = read.csv("../data/FinalSierraCWB_FIA_withCN_RadHours_fuzzedCoords.csv")
-#d_site = read.csv("../data/FIA_non-WB_predictors.csv")
+d = merge(d_site, d_ba, by.x="PLT_CN" , by.y="PLT_CN") # combine basal area and site info
+d = merge(d, d_plotloc, by.x="PLT_CN", by.y="CN")
 
-plotlocs= SpatialPoints(d_fire[,c("Lon", "Lat")])
+plotlocs= SpatialPoints(d[,c("LON", "LAT")])
+plot(plotlocs)
+
+# Pull out only the sierra plots 
+load("../working-files/sierras.outline.Rdata")
+d <- d[!is.na(over(plotlocs, snoutline)),]
+dim(d)
+plotlocs <- SpatialPoints(d[,c("LON", "LAT")])
+plot(plotlocs)
+
 
 # Load prism raster layers
 load("../working-files/sierra_prism_rasters.Rdata")
@@ -105,11 +114,11 @@ head(x.rast); dim(x.rast)
 
 # Select a subset of common species to model
 names(d) 
-spdata = d[,110:139] # d[,239:268]
+spdata = d[,110:183] # d[,239:268]
 prev = apply(spdata, 2, f<-function(x) {return(sum(x>0))})
 rev(sort(prev)) 
 # Select the most abundant species
-spp = names(prev)[prev>=25] # take species that occur in some minimum number of plots
+spp = names(prev)[prev>=50] # take species that occur in some minimum number of plots
 
 # If it's still in the data set, remove mountain mahogany (doesn't converge, and it's not really a tree)
 spp = spp[spp != "sp.CELE3"]
@@ -124,26 +133,13 @@ sum(ba_obs==0)
 ynonzero = which(ba_obs>0)
 hist(ba_obs)
 plotmap(plotlocs, ba_obs, heat.colors)
-points(plotlocs[ba_obs==0,], pch=16, col="black")
+points(plotlocs[which(ba_obs==0),], pch=16, col="black")
 # these are mostly at the edge of forested areas
 
 # Remove empty rows in y and from d
 y = y[ynonzero,]
 d = d[ynonzero,]
-d_fire = d_fire[ynonzero,]
 plotlocs = plotlocs[ynonzero]
-
-
-# Add more variables to the analysis data frame 
-d$sin.slope = d$SlopeFIA/180*pi
-d$sin.slope.sin.aspect = sin(d$SlopeFIA/180*pi) * sin(d$AspectFIA/180*pi)
-d$sin.slope.cos.aspect = sin(d$SlopeFIA/180*pi) * cos(d$AspectFIA/180*pi)
-
-# check these correlations
-cor(d[,c("ppt.tot", "tmean.mean", "sin.slope.sin.aspect", "sin.slope.cos.aspect")])
-plot(sin.slope.sin.aspect~rad.07, data=d)
-plot(sin.slope.cos.aspect~rad.07, data=d) # weirdly, not much correlation here
-
 
 
 ###################################
