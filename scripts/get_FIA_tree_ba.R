@@ -1,13 +1,11 @@
 
 # Say where the files are and which state to summarize
 
-data_path <- "/users/latimer/google drive/samsi/fia/rawdata/"
+data_path <- "../data/fia-raw-data/"
 
 
 states_to_get = c("CA", "NV", "ID", "MT", "OR", "WA", "WY", "CO", "NM", "AZ", "UT")
 
-# loop through and summarize basal area for trees >5 inches in all states separately
-for (j in 1:length(states_to_get)) ba.summary(data_path, state=states_to_get[j], public.only=FALSE, annual.only=FALSE)
 
 ##############################################################
 # Function that summarized BA by species by plot for one state
@@ -100,43 +98,27 @@ ba.summary <- function(data_path, state, public.only, annual.only) {
 	plot.ba.spcs.all$SPECIES_SYMBOL <- droplevels(plot.ba.spcs.all$SPECIES_SYMBOL)
   plot.ba.spcs.all$PLT_CN = plots$CN[match(plot.ba.spcs.all$plot_id, plots$plot_id)] # append the FIA plot code number
 
-	write.csv(plot.ba.spcs.all, paste("/users/latimer/google drive/samsi/fia/workingdata/", state, "_ba_summary_long.csv", sep=""))
+	write.csv(plot.ba.spcs.all, paste("../working-files/", state, "_ba_summary_long.csv", sep=""))
 }
 #########################################
 
+
+# loop through and summarize basal area for trees >5 inches in all states separately
+for (j in 1:length(states_to_get)) ba.summary(data_path, state=states_to_get[j], public.only=FALSE, annual.only=FALSE)
+
+ba.summary(data_path, state="CA", public.only = FALSE, annual.only = FALSE)
 
 
 ###########################
 # From here on, this is to check and explore the data collected above. 
 # Then combine into a large basal area matrix for all states together. 
 
-plot.ba.spcs.all_AZ = read.csv("./workingdata/AZ_ba_summary_long.csv")
-plot.ba.spcs.all_CA = read.csv("./workingdata/CA_ba_summary_long.csv")
-plot.ba.spcs.all_CO = read.csv("./workingdata/CO_ba_summary_long.csv")
-plot.ba.spcs.all_ID = read.csv("./workingdata/ID_ba_summary_long.csv")
-plot.ba.spcs.all_MT = read.csv("./workingdata/MT_ba_summary_long.csv")
-plot.ba.spcs.all_NM = read.csv("./workingdata/NM_ba_summary_long.csv")
-plot.ba.spcs.all_NV = read.csv("./workingdata/NV_ba_summary_long.csv")
-plot.ba.spcs.all_OR = read.csv("./workingdata/OR_ba_summary_long.csv")
-plot.ba.spcs.all_UT = read.csv("./workingdata/UT_ba_summary_long.csv")
-plot.ba.spcs.all_WA = read.csv("./workingdata/WA_ba_summary_long.csv")
-plot.ba.spcs.all_WY = read.csv("./workingdata/WY_ba_summary_long.csv")
-
-# check if overlap in PLT_CN numbers for different states -- apparently they're unique
-z = unlist(sapply(plot.ba.spcs.all_OR$PLT_CN, FUN=f<-function(x) {return(x %in% plot.ba.spcs.all_WA$PLT_CN)}))
-sum(z)
-
-ba.all = rbind(plot.ba.spcs.all_AZ, plot.ba.spcs.all_CA, plot.ba.spcs.all_CO , plot.ba.spcs.all_ID, plot.ba.spcs.all_MT, plot.ba.spcs.all_NM, plot.ba.spcs.all_NV, plot.ba.spcs.all_OR, plot.ba.spcs.all_UT, plot.ba.spcs.all_WA, plot.ba.spcs.all_WY)
-
-
-write.csv(ba.all, "/users/latimer/google drive/samsi/fia/workingdata/basal_area_western_states_long.csv")
+plot.ba.spcs.all_CA = read.csv("../working-files/CA_ba_summary_long.csv")
 
 
 #### Convert to wide format and save ####
-ba.all.wide <- xtabs(ba.ha ~ PLT_CN + SPECIES_SYMBOL, data=ba.all.thinned)
-write.csv(ba.all.wide, "/users/latimer/google drive/samsi/fia/workingdata/basal_area_western_states_wide.csv")
-
-
+ba.ca.wide <- xtabs(ba.ha ~ PLT_CN + SPECIES_SYMBOL, data=plot.ba.spcs.all_CA)
+write.csv(ba.ca.wide, "../working-files/basal_area_cali_wide.csv")
 
 
 
