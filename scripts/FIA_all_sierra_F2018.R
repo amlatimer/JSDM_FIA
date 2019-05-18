@@ -118,7 +118,7 @@ spdata = d[,110:183] # d[,239:268]
 prev = apply(spdata, 2, f<-function(x) {return(sum(x>0))})
 rev(sort(prev)) 
 # Select the most abundant species
-spp = names(prev)[prev>=50] # take species that occur in some minimum number of plots
+spp = names(prev)[prev>30] # take species that occur in some minimum number of plots
 
 # If it's still in the data set, remove mountain mahogany (doesn't converge, and it's not really a tree)
 spp = spp[spp != "sp.CELE3"]
@@ -158,8 +158,6 @@ ml = list(ng=2000, burnin=1000, typeNames="CA")#, reductList = list(r=4, N=8))
 # Test run on all data 
 out <- gjam(~ bio12_1k_point + bio1_1k_point + I(bio12_1k_point^2) + I(bio1_1k_point^2) + bio12_1k_point:bio1_1k_point + aspect_sin_30m_point + aspect_cos_30m_point, xdata=d, ydata=y, modelList=ml)
 
-#~ ppt.tot + I(ppt.tot^2) + tmean.mean + I(tmean.mean^2) + ppt.tot:tmean.mean 
-
 # One issue is whether to include topographic information. The potential problem is for projecting forward onto a coarse raster, there is no meaningful slope or aspect at that scale.
 
 # But we could alternatively project onto a fine raster, or onto the FIA point locations. 
@@ -170,13 +168,11 @@ gjamPlot(out, plotPars=pl)
 
 ###### Mapping imputed values of temperature and precipitation, and comparing those to observed. Are there any systematic over- or underestimates of temperature (or precip)?
 
-plotlocs <- SpatialPoints(coord=d[,c("Lon", "Lat")])
+plotlocs <- SpatialPoints(coord=d[,c("LON", "LAT")])
 
-plot(d$tmeannew, out$prediction$xpredMu[,3], pch=16, cex=0.5, col="darkgray")
+plot(d$bio1_1k_point, out$prediction$xpredMu[,3], pch=16, cex=0.5, col="darkgray")
 abline(0,1)
-points(d$tmeannew[d$YrLastFire>2005], out$prediction$xpredMu[d$YrLastFire>2005,3], pch=16, cex=0.5, col="red")
-# no obvious association with fire. Maybe a hint that recently burned areas are "warmer" in the mid-elevation band.
-tmean_errors <- out$prediction$xpredMu[,3] - d$tmeannew
+tmean_errors <- out$prediction$xpredMu[,3] - d$bio1_1k_point
 tmean_errors[is.na(tmean_errors)] <- 0 # set the couple of NA's to 0 for plotting purposes
 
 hist(tmean_errors)
@@ -185,23 +181,11 @@ tmean_errors[tmean_errors < (-max(tmean_errors))] <- -max(tmean_errors)
 plotmap(plotlocs, tmean_errors, rain.colors)
 recent_fire <- which(d$YrLastFire>1996)
 points(plotlocs[recent_fire], pch=1 )
-# arbitrarily, color the map by whether there's a positive or negative error >0.2
-tmean_errors_cat <- tmean_errors
-tmean_errors_cat[abs(tmean_errors)<0.2] <- 0
-tmean_errors_cat[tmean_errors > 0.2] <- 1
-tmean_errors_cat[tmean_errors < -0.2] <- -1
-plotmap(plotlocs, tmean_errors_cat, rain.colors)
 
-plot(tmean_errors, d$tmeannew)
-plot(tmean_errors, d$pptnew)
-plot(tmean_errors, d$rad.tot)
-plot(tmean_errors, d$cloudiness.07)
-plot(tmean_errors, d$Deficit.BCM)
-plot(tmean_errors~ d$elev)
-abline(0,0, lwd=2, col="gold")
+plot(tmean_errors, d$elevation_30m_point)
 
-plot(d$pptnew, out$prediction$xpredMu[,2], pch=16, cex=0.5, col="darkgray")
-pptmean_errors <- out$prediction$xpredMu[,2] - d$pptnew
+plot(d$bio12_1k_point, out$prediction$xpredMu[,2], pch=16, cex=0.5, col="darkgray")
+pptmean_errors <- out$prediction$xpredMu[,2] - d$bio12_1k_point
 hist(pptmean_errors)
 pptmean_errors[is.na(pptmean_errors)] <- 0 # set the couple of NA's to 0 for plotting purposes
 plotmap(plotlocs, pptmean_errors, rain.colors)
@@ -209,93 +193,25 @@ plotmap(plotlocs, pptmean_errors, rain.colors)
 # This might be because there are more than expected ABCO there? 
 
 # compare errors in precip vs temperature inverse prediction
-plot(tmean_errors, pptmean_errors) # moderate positive association
+plot(tmean_errors, pptmean_errors) # moderate negative association
 cor(tmean_errors, pptmean_errors)
 
 # particular species associated with under-prediction? 
-plot(pptmean_errors~y$sp.ABCO) # low ABCO cover associated with underprediction of precipitation
-plot(pptmean_errors~y$sp.ABMA) 
-plot(pptmean_errors~y$sp.JUOC) 
-plot(pptmean_errors~y$sp.CADE27)
-plot(pptmean_errors~y$sp.PICO) # high PICO cover associated with underpredictio of precip
-plot(pptmean_errors~y$sp.PIJE)
-plot(pptmean_errors~y$sp.PILA)
-plot(pptmean_errors~y$sp.PIPO)
-plot(pptmean_errors~y$sp.PISA2)
-plot(pptmean_errors~y$sp.PIMO)
-plot(pptmean_errors~y$sp.PSME)
-plot(pptmean_errors~y$sp.QUCH2)
-plot(pptmean_errors~y$sp.QUKE)
-plot(pptmean_errors~y$sp.QUDO)
-plot(pptmean_errors~y$sp.QUWI2)
-
-
-### NEXT SHOULD MAP UNCERTAINTY IN INVERSE PREDICTION (xpredSD)
-### AND COMPARE ERRORS TO MORTALITY IN DROUGHT
-
-
-
-
-
-
-
-
-###### TESTING OUT OF SAMPLE IMPUTATION OF Y
-# Simply deleting a row of the y data
-y.test = y
-holdouts <- seq(10,1100, by=10)
-y.test[holdouts,] = NA
-ml = list(ng=1000, burnin=500, typeNames="CA")
-out.test <- gjam(~ ppt.tot + I(ppt.tot^2) + tmean.mean + I(tmean.mean^2) + ppt.tot:tmean.mean , xdata=d, ydata=y.test, modelList=ml)
-
-# look at results
-par(mfrow=c(4,4), mar=rep(2,4))
-for (i in 1:16) plot(y[holdouts,i], out.test$prediction$ypredMu[holdouts,i], main=names(y)[i])
-# of course, way fewer zeros in predictions than in data, but some species not predicted badly. mixed bag. 
-
-
-
-
-
-
-
-#######################
-# Explore model summary
-
-# Model DIC and Gneiting-Raftery scores
-out.test$modelSummary$DIC
-out$modelSummary$yscore
-
-# Fitted values of total basal area
-dev.off(); plot.new()
-ba.fit = apply(out$prediction$ypredMu, 1, sum)
-ba.obs = apply(y,1,sum)
-plot(ba.fit~ba.obs, xlim=c(0, 130), ylim=c(0,130))
-abline(0,1)
-# underspecified model -- variation in prediction much less than in observations, but not obviously over or under predicting.  
-
-# Obs vs fit for species
-plot.new()
-par(mfrow=c(3,3))
-for (i in 1:9) plot(y[,i], out$prediction$ypredMu[,i], ylab="BA model fit", xlab = "BA observed")
-for (i in 10:18) plot(y[,i], out$prediction$ypredMu[,i], ylab="BA model fit", xlab = "BA observed")
-
-# holdouts (if any data were held out in model fitting)
-par(mfrow=c(1,2))
-xMu  <- out$prediction$xpredMu
-xSd  <- out$prediction$xpredSd
-yMu  <- out$prediction$ypredMu
-hold <- out$holdoutIndex
-
-plot(out$x[hold,-1],xMu[hold,-1], cex=.2)
-title('holdouts in x'); abline(0,1)
-plot(out$y[hold,], yMu[hold,], cex=.2)
-title('holdouts in y'); abline(0,1)
-plot(apply(out$y[hold,],1, sum), apply(yMu[hold,], 1, sum), cex=.2)
-title('holdouts in y, total by plot'); abline(0,1)inflation in the plots, which is largely because of their small size (?)
-
-# KEY Q: How much should we worry about this? Can we still take model projections about basal area seriously? I would guess that for community change it should still be OK, but not sure about basal area. 
-
+plot(pptmean_errors~y$ABCO) # low ABCO cover associated with underprediction of precipitation?
+plot(pptmean_errors~y$ABMA) 
+plot(pptmean_errors~y$JUOC) 
+plot(pptmean_errors~y$CADE27)
+plot(pptmean_errors~y$PICO) 
+plot(pptmean_errors~y$PIJE)
+plot(pptmean_errors~y$PILA)
+plot(pptmean_errors~y$PIPO)
+plot(pptmean_errors~y$PISA2)
+plot(pptmean_errors~y$PIMO)
+plot(pptmean_errors~y$PSME)
+plot(pptmean_errors~y$QUCH2)
+plot(pptmean_errors~y$QUKE)
+plot(pptmean_errors~y$QUDO)
+plot(pptmean_errors~y$QUWI2)
 
 ##### Display model coefficients and chains
 
@@ -314,26 +230,6 @@ title('holdouts in y, total by plot'); abline(0,1)inflation in the plots, which 
 ##  
 ##  First to assess how well this works.  (q do with other data sets -- which? protea atlas for fynbos weather stations?)
 ## Second to assess sensitivity
-
-### Map residuals of predictions of variables
-
-v = d$ppt.tot - out$prediction$xpredMu[,2]
-plot(v~d$ppt.tot)
-pcols = (v*10-min(v*10))+1
-rain.colors = colorRampPalette(c("red", "gray", "blue"))
-palette(rain.colors(max(pcols)))
-hist(v)
-plot(plotlocs, pch=16, cex=0.7,col=pcols)
-# no real clear pattern of under/over pred. 
-
-# temperature
-v = d$tmean.mean - out$prediction$xpredMu[,3]
-plot(v~d$tmean.mean)
-pcols = (v*10-min(v*10))+1
-palette(rain.colors(max(pcols)))
-plot(plotlocs, pch=16, cex=0.7, col=pcols)
-# no real clear pattern of under/over pred. 
-
 
 # Using community information to predict environment
 
@@ -483,23 +379,23 @@ plot(out_fire$inputs$x[out_fire$modelList$holdoutIndex,"ppt.tot"],out_fire$predi
 # Q do we need to re-run the model using unstandardized values, or will the model recognize that new data are not yet standardized?
 
 ml = list(ng=2000, burnin=1000, typeNames="CA")
-out.current = gjam(~ ppt.tot + I(ppt.tot^2) + tmean.mean + I(tmean.mean^2) + ppt.tot:tmean.mean, xdata=d, ydata=y, modelList=ml)
+out.current = gjam(~ bio12_1k_point + I(bio12_1k_point^2) + bio1_1k_point + I(bio1_1k_point^2) + bio12_1k_point:bio1_1k_point, xdata=d, ydata=y, modelList=ml)
 
-gjamPredict(out.current, y2plot = "sp.ABCO")
+gjamPredict(out.current, y2plot = "sp.PIAL")
 
 
 # Try fitting model with missing y values for raster cells
 index.sierra = which(!is.na(getValues(pptnorm.sierra)))
 x.norm = data.frame(pptnew = getValues(pptnorm.sierra)[index.sierra], tmeannew = getValues(tmeannorm.sierra)[index.sierra])
 
-x.norm$ppt.tot = x.norm$pptnew # (x.norm$pptnew-mean(d$pptnew, na.rm=T))/sd(d$pptnew, na.rm=T)
-x.norm$tmean.mean = x.norm$tmeannew # (x.norm$tmeannew-mean(d$tmeannew, na.rm=T))/sd(d$tmeannew, na.rm=T)
+x.norm$bio12_1k_point = x.norm$pptnew # (x.norm$pptnew-mean(d$pptnew, na.rm=T))/sd(d$pptnew, na.rm=T)
+x.norm$bio1_1k_point = x.norm$tmeannew # (x.norm$tmeannew-mean(d$tmeannew, na.rm=T))/sd(d$tmeannew, na.rm=T)
 
 pred.current = gjamPredict(out.current, newdata = list(xdata=x.norm))
 
 # visualize result for one species
 rastnew = pptnorm.sierra
-rastnew[index.sierra] =  pred.current$sdList$yMu[,7]
+#rastnew[index.sierra] =  pred.current$sdList$yMu[,7]
 plot(rastnew) 
 
 hist(d$sp.ABCO)
@@ -508,17 +404,17 @@ hist(predtest$sdList$yMu[,1])
 # Looks good. Now predict forward to future climate and look at change 
 
 
-x.future = data.frame(ppt.tot = getValues(ppt.future.sierra)[index.sierra], tmean.mean = getValues(tmp.future.sierra)[index.sierra])
+x.future = data.frame(bio_12_1k_point = getValues(ppt.future.sierra)[index.sierra], bio_1_1k_point = getValues(tmp.future.sierra)[index.sierra])
 
 pred.future = gjamPredict(out.current, newdata = list(xdata=x.future))
 
 # visualize result for one species
 rastnew = pptnorm.sierra
-par(mfrow=c(1, 2))
-rastnew[index.sierra] =  pred.current$sdList$yMu[,1]
-plot(rastnew) 
-rastnew[index.sierra] =  pred.future$sdList$yMu[,1]
-plot(rastnew) 
+par(mfrow=c(1, 2), mgp=c(1.5,0.5,0))
+rastnew[index.sierra] =  pred.current$sdList$yMu[,5]
+plot(rastnew, main = "Model fit: \ncurrent basal area", xlab="Longitude", ylab="Latitude") 
+rastnew[index.sierra] =  pred.future$sdList$yMu[,5]
+plot(rastnew, main = "Model projection: \n2050 basal area RCP4.5", xlab="Longitude", ylab="Latitude") 
 
 
 # NEXT: Make projections for future conditions for full community and calculate change metrics . . . . community composition, BA, etc. 
